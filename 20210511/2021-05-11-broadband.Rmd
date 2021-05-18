@@ -1,0 +1,93 @@
+---
+title: "TidyTuesday 2021-05-11"
+author: Markus Müller
+data: 2021-05-11
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(scales)
+library(sf)
+library(urbnmapr) 
+theme_set(theme_minimal()) # base theme of project
+```
+
+```{r}
+tt <- tt_load("2021-05-11")
+```
+
+```{r}
+data <- tt$broadband %>%
+  janitor::clean_names() %>%
+  rename(state = st, 
+         availability = broadband_availability_per_fcc,
+         usage = broadband_usage) %>%
+  mutate(
+    usage = as.numeric(usage),
+    availability = as.numeric(availability),
+    # some county ids have onyl a length of 4
+    county_fips = sprintf("%05d" , county_id),
+  )
+```
+
+```{r}
+# het data for counties
+counties_sf <- get_urbn_map("counties", sf = TRUE)
+```
+
+```{r}
+# join counties data
+counties_map <-counties_sf %>%
+  left_join(data, by = "county_fips")
+```
+
+```{r}
+# bin the usage 
+# Code from: https://github.com/JolienNoels/tidytuesday/blob/main/2021/2021-05-11-broadband.R
+counties_map$usage <- cut(counties_map$usage,
+                          breaks = c(0,0.25,0.5,0.75,1.01), 
+                           labels=c("0-25%","25%-50%","50%-75%","75%-100%"))
+
+# bin the availability
+counties_map$availability <- cut(counties_map$availability,
+                          breaks = c(0,0.25,0.5,0.75,1.01), 
+                           labels=c("0-25%","25%-50%","50%-75%","75%-100%"))
+```
+
+
+
+```{r}
+counties_map %>%
+  ggplot() +
+  geom_sf(aes(fill=usage), size = 0.1) +
+  coord_sf(datum = NA) +
+  scale_fill_manual(values = c("#B1FFEA", "#80AEBA", "#505C8B", "#130440", "#ffffff"),
+                    na.value = "#ffffff",
+                    name ="Usage") +
+  labs(
+    title = "Broadband Usage in the US (2019)",
+    subtitle = "Percent of people per state usage of fixed terrestrial \nbroadband at speeds of 25 Mbps/3 Mbps",
+    caption = "TidyTuesday Week 20 | Data: Microsoft & The Verge | Graphic: M.Müller" 
+  ) +
+  theme (legend.position   = "bottom",
+         plot.title        = element_text(face="bold", hjust = 0.5),
+         plot.subtitle     = element_text(hjust = 0.5),
+         plot.caption      = element_text(hjust = 1)
+  )
+ggsave("2021-05-11-broadband.png", width = 32.385, height = 19.61, units = c("cm"))
+```
+
+
+## Resources (code that helped me come up with my visualization):
+- https://github.com/MHenderson/internet-access/blob/master/internet-access.r
+- https://twitter.com/kierisi/status/1391915889331683331/photo/1
+- https://urban-institute.medium.com/how-to-create-state-and-county-maps-easily-in-r-577d29300bb2
+- https://github.com/panggahdputra/MyTidyTuesday2021/blob/main/Week%2020/code%20week20%20v0.R
+- https://github.com/wjtorres/tidytuesday/blob/master/2021_05_11/2021_05_11_tidy_tuesday.Rmd
+- https://github.com/JolienNoels/tidytuesday/blob/main/2021/2021-05-11-broadband.R
+
+
+
