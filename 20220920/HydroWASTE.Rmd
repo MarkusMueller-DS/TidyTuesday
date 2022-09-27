@@ -1,0 +1,105 @@
+# Wastewater Plants
+
+```{r}
+library(tidyverse)
+```
+
+get the Data
+```{r}
+tuesdata <- tidytuesdayR::tt_load('2022-09-20')
+HydroWASTE_v10 <- tuesdata$HydroWASTE_v10
+```
+
+```{r}
+HydroWASTE_v10 <- janitor::clean_names(HydroWASTE_v10)
+```
+
+```{r}
+HydroWASTE_v10
+```
+
+## Diluation Factor
+```{r}
+summary(HydroWASTE_v10$df)
+```
+
+### How many plants have a dilution factor below 10
+```{r}
+sum(HydroWASTE_v10$df[!is.na(HydroWASTE_v10$df)] < 10)
+```
+
+## Display wastewater plants in Germany
+```{r}
+df_germany <- HydroWASTE_v10 %>%  
+  filter(country == "Germany") %>% 
+  select(c("waste_id", "country", "lat_wwtp", "lon_wwtp", "df" )) %>% 
+  mutate(df = df / 100, eng_reg_threshold = if_else(df <= 0.1, "lower", "above")) %>% 
+  mutate(df_cut = case_when(df < 0.02 ~ "<2%",
+                            df >= 0.02 & df < 0.04 ~ "2-4%",
+                            df >= 0.04 & df < 0.06 ~ "4-6%",
+                            df >= 0.06 & df < 0.08 ~ "6-8%",
+                            df >= 0.08 & df < 0.1 ~ "8-10%",
+                            ))
+df_germany
+```
+
+split df for lower and above
+```{r}
+df_germany_lower <- df_germany %>% filter(eng_reg_threshold == "lower")
+df_germany_above <- df_germany %>% filter(eng_reg_threshold == "above")
+  
+(df_germany_lower)
+(df_germany_above)
+```
+
+
+```{r}
+map_germany <- as_tibble(map_data("world")) %>% 
+  filter(region == "Germany")
+```
+
+```{r}
+map_germany
+```
+
+
+
+```{r}
+cols <- c("<2%" = "#ea9999", "2-4%" = "#e06666", "4-6%" = "#cc0000", 
+          "6-8%" = "#990000", "8-10%" = "#660000")
+bg_color <- "#eeeeee"
+legen_title <- "dilution factor"
+
+
+
+ggplot() + geom_polygon(data = map_germany, aes(x=long, y= lat, group=group), fill="#848ca4", color="#242c44") + 
+  coord_fixed(1.3) +
+  geom_point(data=df_germany_above, aes(x=lon_wwtp, y=lat_wwtp), color="#cfe2f3", alpha=.5, size=.3) +
+  geom_point(data=df_germany_lower, aes(x=lon_wwtp, y=lat_wwtp, color=df_cut), size=1.3) +
+  scale_color_manual(legen_title, values= cols) +
+  labs(
+    title = "Wastewater Plants in Germany",
+    subtitle = "A delution factor of less then 10% represents a common threshold \nfor environmental concern.",
+    caption = "TidyTuesday Week 38 | Data: Macedio et al, 2022 | Graphic: M.Müller"
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_text(face="bold", hjust=0.5),
+    plot.subtitle = element_text(hjust=0.5),
+    plot.caption = element_text(hjust=0.5),
+    panel.background = element_rect(fill = bg_color, color = bg_color),
+    plot.background   = element_rect(fill = bg_color, color = bg_color),
+    legend.background = element_rect(fill = bg_color, color = bg_color),
+    legend.key = element_rect(fill=bg_color)
+  )
+
+ggsave("test.png")
+```
+
+
+
+
+
