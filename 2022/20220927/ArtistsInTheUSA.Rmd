@@ -1,0 +1,109 @@
+
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggtext) 
+```
+
+
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2022, week=39)
+artists <- tuesdata$artists
+```
+
+```{r}
+artists
+```
+
+```{r}
+colnames(artists)
+```
+
+```{r}
+unique(artists$race)
+```
+
+```{r}
+unique(artists$type)
+```
+
+
+```{r}
+artists %>% filter((state=="Rhode Island") & (type == "Architects"))
+```
+
+## Data cleaning 
+
+Encode NA as 0
+```{r}
+# artists$artists_n[is.na(artists$artists_n)] <- 0
+artists <- artists %>% 
+  mutate(artists_n = coalesce(artists_n, 0),
+        artists_share = coalesce(artists_share, 0))
+```
+
+multiply artists_share times 100 to get percent values
+```{r}
+artists$artists_share <- artists$artists_share * 100
+```
+
+
+
+## Which state has the highest share/population?
+
+```{r}
+worker_count <- aggregate(artists$all_workers_n, by=list(Category=artists$state), FUN=sum)
+worker_count <- worker_count %>% rename(worker_sum = x, state = Category)
+
+artists_count <- aggregate(artists$artists_n, by=list(Category=artists$state), FUN=sum)
+artists_count <- artists_count %>% rename(artists_sum = x, state = Category)
+```
+
+join DataFrames and calculate artists_share for each state
+```{r}
+artists_clean <- merge(worker_count, artists_count)
+artists_clean$artists_share <- artists_clean$artists_sum * 100 / artists_clean$worker_sum
+artists_clean
+```
+
+
+```{r}
+artists_ordered <- artists_clean[order(artists_clean$artists_share, decreasing=TRUE),]
+```
+
+```{r}
+rownames(artists_ordered) <- NULL
+artists_ordered
+```
+
+
+
+
+
+### Visualize findings
+```{r}
+ggplot(data=artists_ordered) + 
+  geom_col(aes(x = reorder(state, +artists_share), y = artists_share), fill="steelblue") +
+  coord_flip() +
+  labs(
+    title = "Share of <span style='color:#0072B2;'>Artists</span> in every State ", 
+    subtitle = "Artists per State compared to the whole workforce",
+    caption = "TidyTuesday Week 39 | Data: arts.gov | Graphic: M.Müller",
+    y = "Artists share in %",
+    x ="State" 
+  ) +
+  theme(
+    plot.title = element_markdown(lineheight = 1.1, face="bold", hjust=0.5),
+    plot.subtitle = element_text(hjust=0.5),
+    plot.caption = element_text(hjust=0.5),
+  )
+            
+```
+
+```{r}
+ggsave("ArtistsPerState.png")
+```
+
+
