@@ -1,0 +1,130 @@
+
+
+```{r}
+library(tidyverse)
+library(wordcloud)
+library(RColorBrewer)
+```
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2022, week = 40)
+product_hunt <- tuesdata$product_hunt
+```
+
+```{r}
+product_hunt
+```
+
+```{r}
+str(product_hunt)
+```
+
+
+
+## Wordcould for category tags
+
+```{r}
+tags <- paste(product_hunt[, 9])
+```
+
+```{r}
+substr(tags, 1, 400)
+```
+
+I need to replace "c", "(", "\\\\", "[", "]".
+One backslash is "\\\\"
+"[" -> "\\["
+"]" -> "\\]"
+
+-> gsub("[[:punct:]]") -> replaces special chars
+
+
+```{r}
+tags_c1 <- gsub("[[:punct:]]", "", tags)
+nchar(tags_c1)
+```
+
+```{r}
+tags_c2 <- gsub("[\r\n]", "", tags_c1)
+nchar(tags_c2)
+```
+
+
+```{r}
+tags_clean <- substr(tags_c2, 2, nchar(tags_c2))
+nchar(tags_clean)
+```
+
+
+```{r}
+library(data.table) 
+```
+
+code from: https://stackoverflow.com/questions/39275266/how-to-count-number-of-occurrence-of-each-words-in-a-string-in-r-language
+
+```{r}
+ss <- data.frame(x=unlist( str_split(tags_clean, " ")))
+sss <- setDT(ss)[, .(freq = .N), x]
+```
+
+```{r}
+sss
+```
+
+
+```{r}
+sss[order(-sss$freq), ]
+```
+
+
+```{r}
+set.seed(1234)
+wordcloud(words = sss$x, freq = sss$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+```{r}
+library(ggplot2)
+library(ggtext) 
+library(cowplot)
+library(magick)
+```
+
+```{r}
+dev.size()
+```
+
+
+```{r}
+my_plot <-ggplot() +
+  theme_void() +
+  labs(title = "Most used Categroies from ProductHunt form 2014-2021",
+       subtitle = "Top 3 Tags: Tech(44231), Tools(19145), Productivity(17456) mentions",
+       caption = "TidyTuesday Week 40 | Data: components.com | Graphic: M.Müller") +
+  theme(
+    plot.title = element_markdown(lineheight = 1.1, face="bold", hjust=0.5),
+    plot.subtitle = element_text(hjust=0.5),
+    plot.caption = element_text(hjust=0.5),
+    plot.background = element_rect(fill = "white")
+  )
+
+plot_final <- ggdraw() +
+  draw_plot(my_plot) +
+  draw_image("wordcloud.png", scale=1.2)
+
+plot_final
+```
+
+
+```{r}
+ggsave("wordcloud_viz.png", plot=plot_final)
+```
+
+
+
+
+
+
+
+

@@ -4,6 +4,13 @@ Repo with my submission for the TidyTuesday-challenge
 
 ## 2022
 
+### Week 40
+[Code](2022/20221004)
+
+![alt text](2022/20221004/wordcloud_viz.png)
+
+
+
 ### Week 39
 [Code](2022/20220927)
 
